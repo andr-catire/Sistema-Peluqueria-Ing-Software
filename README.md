@@ -11,11 +11,21 @@ PostgreSQL mediante Prisma y una aplicacion cliente en Vue.
 
 ## Inicio rapido
 
-1. Copia `backend/.env.example` a `backend/.env` y completa la URL de PostgreSQL y el telefono.
-2. Copia `frontend/.env.example` a `frontend/.env` si necesitas cambiar la URL de la API.
-3. Instala dependencias ejecutando `npm install` dentro de `backend/` y `frontend/`.
-4. Inicia la API con `npm run dev` dentro de `backend/`.
-5. Inicia la interfaz con `npm run dev` dentro de `frontend/`.
+### Requisitos
+
+- Node.js 22 LTS (`.nvmrc`), Git y PostgreSQL 16.
+- VS Code recomienda las extensiones compartidas desde `.vscode/extensions.json`.
+
+### Preparacion local
+
+1. Crea la base de datos `peluqueria` en PostgreSQL.
+2. Copia `backend/.env.example` a `backend/.env` y configura `DATABASE_URL`, `JWT_SECRET` y el telefono.
+3. Copia `frontend/.env.example` a `frontend/.env` si el archivo no existe o si necesitas cambiar la URL de la API.
+4. Instala dependencias desde la raiz con `npm --prefix backend install` y `npm --prefix frontend install`.
+5. Inicia la API con `npm --prefix backend run dev`.
+6. Inicia la interfaz con `npm --prefix frontend run dev`.
+
+Los paquetes incluyen los comandos `lint`; el frontend tambien incluye `build`.
 
 No guardes credenciales reales en Git. Los archivos `.env` estan ignorados; los `.env.example`
 solo contienen valores de ejemplo.
