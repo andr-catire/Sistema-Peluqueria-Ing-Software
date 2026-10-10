@@ -14,7 +14,7 @@ PostgreSQL mediante Prisma y una aplicacion cliente en Vue.
 ### Requisitos
 
 - Node.js 22 LTS y npm. La version esperada esta indicada en `.nvmrc`.
-- PostgreSQL 16 en ejecucion.
+- Una base PostgreSQL 16 local o un proyecto PostgreSQL alojado en Neon.
 - Git.
 - VS Code es opcional; las extensiones recomendadas estan en `.vscode/extensions.json`.
 
@@ -33,21 +33,15 @@ nvm install
 nvm use
 ```
 
-### 1. Crear la base de datos
+### 1. Crear la base de datos compartida en Neon
 
-Inicia el servicio PostgreSQL. Luego crea una base de datos llamada `peluqueria` desde `psql`:
+Para que todo el equipo trabaje con los mismos datos, una persona crea un proyecto en [Neon](https://neon.tech/) y agrega a los demas integrantes como miembros del proyecto desde la configuracion de acceso del proyecto/equipo. Usen una sola rama `development` y su base `neondb` para el trabajo diario; mantengan `production` separada.
 
-```bash
-psql -U postgres -c "CREATE DATABASE peluqueria;"
-```
+En **Connect**, cada integrante selecciona la rama `development`, la base `neondb`, el rol de desarrollo (por ejemplo `neondb_owner`) y el compute `Primary`. Copia dos cadenas conservando los parametros SSL que Neon entrega: deja **Connection pooling** activado para la URL de `DATABASE_URL` (el host suele contener `-pooler`) y desactivalo para copiar la URL directa de `DIRECT_URL`.
 
-Tambien puedes crearla desde pgAdmin. Si ya existe, no vuelvas a ejecutar el comando `CREATE DATABASE`.
+Si los nombres de base, rol o branch iniciales no son los que desea el equipo, crealos o cambialos desde Neon antes de copiar las URL. No publiques esas URL en el repositorio ni las compartas en canales publicos.
 
-Comprueba que PostgreSQL acepta conexiones:
-
-```bash
-pg_isready
-```
+Como alternativa, cada integrante puede usar su PostgreSQL local para desarrollo aislado. En ese caso, configura `DATABASE_URL` y `DIRECT_URL` con la URL local y crea alli la base `peluqueria`.
 
 ### 2. Configurar variables de entorno
 
@@ -58,13 +52,16 @@ cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 ```
 
-Edita `backend/.env` y reemplaza `TU_PASSWORD` con la contrasena de tu usuario PostgreSQL. `DATABASE_URL` debe tener este formato:
+Edita `backend/.env` y reemplaza los valores de ejemplo con las dos URL de Neon. La contrasena es la del rol de base de datos que seleccionaste en Neon y aparece dentro de la URL; copia la cadena completa, no inventes una contrasena de PostgreSQL local. Usa la URL pooled en `DATABASE_URL` para las conexiones de la aplicacion y la URL directa en `DIRECT_URL` para Prisma CLI y las migraciones:
 
 ```text
-postgresql://USUARIO:CONTRASENA@localhost:5432/peluqueria?schema=public
+DATABASE_URL="postgresql://USUARIO:CONTRASENA@HOST-pooler.REGION.aws.neon.tech/BASE?sslmode=require"
+DIRECT_URL="postgresql://USUARIO:CONTRASENA@HOST.REGION.aws.neon.tech/BASE?sslmode=require"
 ```
 
-Configura tambien un valor privado y largo para `JWT_SECRET`, el puerto de API en `PORT` (por defecto `3000`) y el telefono de la peluqueria en `TELEFONO_PELUQUERIA`. La plantilla incluye `FRONTEND_URL`; el CORS actual de Express esta abierto y todavia no usa esa variable para restringir origenes.
+Usa exactamente los hosts y parametros que entrega Neon; la forma anterior es ilustrativa. Si la contrasena contiene caracteres especiales, usa su codificacion URL en la cadena de conexion. La URL compartida actualmente es directa (no contiene `-pooler`); hasta copiar la variante pooled, puede usarse en ambas variables para probar. Configura tambien un valor privado y largo para `JWT_SECRET`, el puerto de API en `PORT` (por defecto `3000`) y el telefono de la peluqueria en `TELEFONO_PELUQUERIA`. La plantilla incluye `FRONTEND_URL`; el CORS actual de Express esta abierto y todavia no usa esa variable para restringir origenes.
+
+Cada integrante debe crear su propio `backend/.env` local con las URL de la misma rama `development`; nunca se manda ese archivo a GitHub. Los miembros del proyecto pueden obtener las cadenas desde Neon. Si se comparte la cadena fuera de Neon, hacerlo por un canal privado y solo con el equipo. Para usar la aplicacion, cada integrante inicia su backend local, que conectara a la misma base Neon; para consultar la base directamente pueden usar Neon SQL Editor o un cliente PostgreSQL con la misma URL. No publiquen URL con contrasena en `.env.example`, README, capturas ni commits.
 
 En `frontend/.env`, usa la URL base de la API:
 
@@ -119,12 +116,20 @@ La vista de salud del frontend tambien muestra esta respuesta. Este endpoint con
 
 ### Prisma y base de datos
 
-Prisma lee `DATABASE_URL` desde `backend/.env`. El esquema esta en `backend/prisma/schema.prisma`, pero por ahora no contiene modelos ni migraciones de tablas de la aplicacion. Cuando se agreguen modelos, genera el cliente y crea/aplica la migracion de desarrollo con:
+Prisma usa `DATABASE_URL` para la conexion de la aplicacion y `DIRECT_URL` para operaciones de esquema. El esquema esta en `backend/prisma/schema.prisma`, pero por ahora no contiene modelos ni migraciones de tablas de la aplicacion. Cuando se agreguen modelos, genera el cliente y crea una migracion desde una base local:
 
 ```bash
 npm --prefix backend run prisma:generate
 npm --prefix backend run prisma:migrate
 ```
+
+Confirma la migracion en Git junto con los cambios del esquema. Para aplicar migraciones ya creadas a la base compartida de Neon, ejecuta:
+
+```bash
+npm --prefix backend run prisma:deploy
+```
+
+Acuerden quien las aplica y no ejecuten cambios de esquema simultaneamente. No uses una base compartida de produccion para desarrollo.
 
 ### Comandos de calidad
 
