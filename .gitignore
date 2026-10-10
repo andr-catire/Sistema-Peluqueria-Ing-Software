@@ -1,0 +1,10 @@
+node_modules/
+.env
+dist/
+.DS_Store
+*.log
+
+# Generated Prisma client and local database artifacts
+backend/src/generated/prisma/
+backend/prisma/*.db
+backend/prisma/*.db-journal
