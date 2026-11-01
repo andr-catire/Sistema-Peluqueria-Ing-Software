@@ -73,20 +73,14 @@ También pueden usar un PostgreSQL local y crear allí la base `peluqueria`.
 
 ### 2. Variables del backend
 
-```bash
-cd backend
-cp .env.example .env
-```
-
-La lista completa, con el origen de cada valor, está en
-[`backend/.env.example`](backend/.env.example). Cópialo y completa:
+Crea `backend/.env` (archivo local, no se sube a Git) con:
 
 ```dotenv
 PORT=3000
 FRONTEND_URL=http://localhost:5173
 
-DB_URL=jdbc:postgresql://HOST-pooler/neondb?sslmode=require
-DB_DIRECT_URL=jdbc:postgresql://HOST/neondb?sslmode=require
+DB_URL=jdbc:postgresql://HOST-pooler.REGION.aws.neon.tech/neondb?sslmode=require
+DB_DIRECT_URL=jdbc:postgresql://HOST.REGION.aws.neon.tech/neondb?sslmode=require
 DB_USER=
 DB_PASSWORD=
 
@@ -98,16 +92,24 @@ JPA_SHOW_SQL=false
 # JWT_SECRET=  (pendiente: historia de inicio de sesión)
 ```
 
-- `PORT`: puerto local del backend; por defecto `3000`.
-- `FRONTEND_URL`: URL del frontend permitida por CORS (`http://localhost:5173` en local).
-- `DB_URL`: conexión JDBC de la aplicación; en Neon usa el host con `-pooler`.
-- `DB_DIRECT_URL`: conexión JDBC directa para Flyway; si falta, se usa `DB_URL`.
-- `DB_USER` y `DB_PASSWORD`: usuario y contraseña del rol de Neon.
-- `APP_ADMIN_EMAIL` y `APP_ADMIN_PASSWORD`: crean el primer administrador solo si todavía no existe
-  ningún `ADMIN`. La contraseña debe tener al menos 8 caracteres.
-- `TELEFONO_PELUQUERIA`: teléfono corporativo que muestra la interfaz.
-- `JPA_SHOW_SQL`: `true` solo para depurar SQL; normalmente `false`.
-- `JWT_SECRET`: se agregará con la historia de inicio de sesión; se genera con
+Dónde obtener cada valor:
+
+- **`PORT`**: puerto local del backend; por defecto `3000`. En producción puede inyectarlo la plataforma.
+- **`FRONTEND_URL`**: URL del frontend permitida por CORS. Local: `http://localhost:5173`.
+  Producción: el dominio real del frontend.
+- **`DB_URL`**: Neon Dashboard > proyecto > **Connect**; rama `development`, base `neondb`, rol de
+  desarrollo y **Connection pooling activado** (host con `-pooler`). Convierte
+  `postgresql://...` en `jdbc:postgresql://...`.
+- **`DB_DIRECT_URL`**: igual, pero con **Connection pooling desactivado** (host directo, sin
+  `-pooler`). Flyway la usa para aplicar las migraciones.
+- **`DB_USER` y `DB_PASSWORD`**: usuario y contraseña del rol de Neon; aparecen en la cadena de
+  conexión o en **Project > Roles**.
+- **`APP_ADMIN_EMAIL` y `APP_ADMIN_PASSWORD`**: los elige el equipo; crean el primer `ADMIN` solo si
+  no existe ninguno. La contraseña debe tener 8 caracteres o más.
+- **`TELEFONO_PELUQUERIA`**: teléfono corporativo que muestra la interfaz; lo proporciona el dueño
+  del salón.
+- **`JPA_SHOW_SQL`**: `true` solo para depurar SQL; normalmente `false`.
+- **`JWT_SECRET`**: pendiente para la historia de inicio de sesión; se genera con
   `openssl rand -base64 48`.
 
 `application.properties` solo contiene referencias `${...}`; nunca valores reales.
@@ -126,19 +128,18 @@ Hibernate valida el esquema; no crea ni modifica tablas por su cuenta.
 
 ```bash
 cd frontend
-cp .env.example .env
 npm install
 npm run dev
 ```
 
-La lista completa está en [`frontend/.env.example`](frontend/.env.example). Solo necesita:
+Crea `frontend/.env` con:
 
 ```dotenv
 VITE_API_URL=http://localhost:3000/api
 ```
 
 `VITE_API_URL` es la URL del backend terminada en `/api`; en producción usa el dominio público del
-backend.
+backend. Reinicia Vite si cambias este archivo.
 
 Abre la dirección que muestra Vite, normalmente `http://localhost:5173`.
 
