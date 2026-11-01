@@ -15,6 +15,9 @@ dist/
 /skills-lock.json
 /.impeccable/
 
+# Vinculación local con Trello (no se versiona)
+/docs/trello.md
+
 # Artefactos de Python generados por scripts locales
 __pycache__/
 *.pyc

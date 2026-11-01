@@ -78,7 +78,8 @@ cd backend
 cp .env.example .env
 ```
 
-Edita `backend/.env` (no se sube a Git) con los valores reales. Sin comillas:
+La lista completa, con el origen de cada valor, está en
+[`backend/.env.example`](backend/.env.example). Cópialo y completa:
 
 ```dotenv
 PORT=3000
@@ -92,14 +93,22 @@ DB_PASSWORD=
 APP_ADMIN_EMAIL=
 APP_ADMIN_PASSWORD=
 TELEFONO_PELUQUERIA=
+
+JPA_SHOW_SQL=false
+# JWT_SECRET=  (pendiente: historia de inicio de sesión)
 ```
 
-- `DB_URL`: conexión de la aplicación (puede usar el host pooled).
-- `DB_DIRECT_URL`: conexión directa para Flyway; si falta, se usa `DB_URL`.
+- `PORT`: puerto local del backend; por defecto `3000`.
+- `FRONTEND_URL`: URL del frontend permitida por CORS (`http://localhost:5173` en local).
+- `DB_URL`: conexión JDBC de la aplicación; en Neon usa el host con `-pooler`.
+- `DB_DIRECT_URL`: conexión JDBC directa para Flyway; si falta, se usa `DB_URL`.
+- `DB_USER` y `DB_PASSWORD`: usuario y contraseña del rol de Neon.
 - `APP_ADMIN_EMAIL` y `APP_ADMIN_PASSWORD`: crean el primer administrador solo si todavía no existe
   ningún `ADMIN`. La contraseña debe tener al menos 8 caracteres.
 - `TELEFONO_PELUQUERIA`: teléfono corporativo que muestra la interfaz.
-- `JWT_SECRET`: se agregará con la historia de inicio de sesión.
+- `JPA_SHOW_SQL`: `true` solo para depurar SQL; normalmente `false`.
+- `JWT_SECRET`: se agregará con la historia de inicio de sesión; se genera con
+  `openssl rand -base64 48`.
 
 `application.properties` solo contiene referencias `${...}`; nunca valores reales.
 
@@ -122,11 +131,14 @@ npm install
 npm run dev
 ```
 
-`frontend/.env` solo necesita:
+La lista completa está en [`frontend/.env.example`](frontend/.env.example). Solo necesita:
 
 ```dotenv
 VITE_API_URL=http://localhost:3000/api
 ```
+
+`VITE_API_URL` es la URL del backend terminada en `/api`; en producción usa el dominio público del
+backend.
 
 Abre la dirección que muestra Vite, normalmente `http://localhost:5173`.
 
@@ -170,13 +182,12 @@ datos PostgreSQL de pruebas.
 ## Gestión de tareas
 
 El proyecto se gestiona en el tablero de Trello
-[ingeniería de software](https://trello.com/b/gM0zISBq/ingenieria-de-software). Las listas, las
-convenciones de ramas y el estado actual están en [`docs/trello.md`](docs/trello.md).
+[ingeniería de software](https://trello.com/b/gM0zISBq/ingenieria-de-software). Allí están las listas,
+las tareas y el estado actual del equipo.
 
 ## Documentación
 
 - [`docs/BRIEF EQUIPO 57 6.pdf`](docs/BRIEF%20EQUIPO%2057%206.pdf): brief del producto.
-- [`docs/trello.md`](docs/trello.md): vinculación y convenciones del tablero.
 - `docs/`: diagramas C4 y contrato de la API (se incorporan conforme avancen las historias).
 
 ## Seguridad
