@@ -1,152 +1,187 @@
-# Sistema de Peluqueria
+# Sistema para Peluquería
 
-Base de trabajo para un sistema de gestion de peluqueria con API en Express, persistencia en
-PostgreSQL mediante Prisma y una aplicacion cliente en Vue.
+Sistema web para gestionar una peluquería: catálogo de servicios, personal, clientes y agenda de citas.
+Proyecto académico de la UCAB (Ingeniería de Software, Equipo 57-6) con proyección comercial.
+
+## Stack
+
+| Capa | Tecnología |
+|---|---|
+| Frontend | Vue 3 (Composition API), Vue Router, Pinia, Axios y Vite |
+| Backend | Java 21, Spring Boot y Maven (`./mvnw`) |
+| Persistencia | Spring Data JPA (Hibernate) |
+| Migraciones | Flyway |
+| Seguridad | Spring Security + BCrypt (JWT pendiente) |
+| Base de datos | PostgreSQL alojado en Neon |
 
 ## Estructura
 
-- `backend/`: API, reglas de negocio, pruebas y esquema Prisma.
-- `frontend/`: interfaz Vue, vistas, componentes y acceso a la API.
-- `docs/`: brief del producto, diagramas C4 y contrato de API.
-
-## Configuracion local
-
-### Requisitos
-
-- Node.js 22 LTS y npm. La version esperada esta indicada en `.nvmrc`.
-- Una base PostgreSQL 16 local o un proyecto PostgreSQL alojado en Neon.
-- Git.
-- VS Code es opcional; las extensiones recomendadas estan en `.vscode/extensions.json`.
-
-Comprueba las versiones antes de instalar:
-
-```bash
-node --version
-npm --version
-psql --version
+```text
+peluqueria/
+├─ backend/                 API Spring Boot, reglas de negocio y pruebas
+│  └─ src/main/resources/
+│     └─ db/migration/      Migraciones Flyway
+├─ frontend/                Aplicación Vue 3 + Vite
+├─ docs/                    Brief, diagramas C4, contrato de API y Trello
+└─ README.md
 ```
 
-Si utilizas nvm, instala y activa la version indicada por el proyecto desde la raiz:
+## Requisitos
+
+- Java 21.
+- Node.js 22 LTS y npm (la versión esperada está en `.nvmrc`).
+- PostgreSQL 16 local o un proyecto PostgreSQL en Neon.
+- Git.
+
+Comprueba las versiones:
+
+```bash
+java --version
+node --version
+npm --version
+```
+
+Si usas nvm, activa la versión del proyecto:
 
 ```bash
 nvm install
 nvm use
 ```
 
-### 1. Crear la base de datos compartida en Neon
+## Configuración local
 
-Para que todo el equipo trabaje con los mismos datos, una persona crea un proyecto en [Neon](https://neon.tech/) y agrega a los demas integrantes como miembros del proyecto desde la configuracion de acceso del proyecto/equipo. Usen una sola rama `development` y su base `neondb` para el trabajo diario; mantengan `production` separada.
+### 1. Base de datos en Neon
 
-En **Connect**, cada integrante selecciona la rama `development`, la base `neondb`, el rol de desarrollo (por ejemplo `neondb_owner`) y el compute `Primary`. Copia dos cadenas conservando los parametros SSL que Neon entrega: deja **Connection pooling** activado para la URL de `DATABASE_URL` (el host suele contener `-pooler`) y desactivalo para copiar la URL directa de `DIRECT_URL`.
+Una persona del equipo crea el proyecto en [Neon](https://neon.tech/) y agrega a los demás integrantes.
+Usen una rama `development` y la base `neondb` para el trabajo diario; mantengan `production` separada.
 
-Si los nombres de base, rol o branch iniciales no son los que desea el equipo, crealos o cambialos desde Neon antes de copiar las URL. No publiques esas URL en el repositorio ni las compartas en canales publicos.
+En **Connect**, seleccionen la rama `development`, la base `neondb` y el rol de desarrollo. Copien dos
+cadenas conservando los parámetros SSL:
 
-Como alternativa, cada integrante puede usar su PostgreSQL local para desarrollo aislado. En ese caso, configura `DATABASE_URL` y `DIRECT_URL` con la URL local y crea alli la base `peluqueria`.
+- **Connection pooling activado** para `DB_URL` (el host suele contener `-pooler`).
+- **Connection pooling desactivado** para `DB_DIRECT_URL` (host directo, lo usa Flyway).
 
-### 2. Configurar variables de entorno
-
-Crea los archivos locales a partir de las plantillas, ejecutando desde la raiz:
-
-```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-```
-
-Edita `backend/.env` y reemplaza los valores de ejemplo con las dos URL de Neon. La contrasena es la del rol de base de datos que seleccionaste en Neon y aparece dentro de la URL; copia la cadena completa, no inventes una contrasena de PostgreSQL local. Usa la URL pooled en `DATABASE_URL` para las conexiones de la aplicacion y la URL directa en `DIRECT_URL` para Prisma CLI y las migraciones:
+Spring necesita el formato JDBC. El usuario y la contraseña van separados de la URL:
 
 ```text
-DATABASE_URL="postgresql://USUARIO:CONTRASENA@HOST-pooler.REGION.aws.neon.tech/BASE?sslmode=require"
-DIRECT_URL="postgresql://USUARIO:CONTRASENA@HOST.REGION.aws.neon.tech/BASE?sslmode=require"
+postgresql://USUARIO:CLAVE@HOST-pooler.REGION.aws.neon.tech/neondb?sslmode=require
+        ↓
+jdbc:postgresql://HOST-pooler.REGION.aws.neon.tech/neondb?sslmode=require
 ```
 
-Usa exactamente los hosts y parametros que entrega Neon; la forma anterior es ilustrativa. Si la contrasena contiene caracteres especiales, usa su codificacion URL en la cadena de conexion. La URL compartida actualmente es directa (no contiene `-pooler`); hasta copiar la variante pooled, puede usarse en ambas variables para probar. Configura tambien un valor privado y largo para `JWT_SECRET`, el puerto de API en `PORT` (por defecto `3000`) y el telefono de la peluqueria en `TELEFONO_PELUQUERIA`. La plantilla incluye `FRONTEND_URL`; el CORS actual de Express esta abierto y todavia no usa esa variable para restringir origenes.
+También pueden usar un PostgreSQL local y crear allí la base `peluqueria`.
 
-Cada integrante debe crear su propio `backend/.env` local con las URL de la misma rama `development`; nunca se manda ese archivo a GitHub. Los miembros del proyecto pueden obtener las cadenas desde Neon. Si se comparte la cadena fuera de Neon, hacerlo por un canal privado y solo con el equipo. Para usar la aplicacion, cada integrante inicia su backend local, que conectara a la misma base Neon; para consultar la base directamente pueden usar Neon SQL Editor o un cliente PostgreSQL con la misma URL. No publiquen URL con contrasena en `.env.example`, README, capturas ni commits.
+### 2. Variables del backend
 
-En `frontend/.env`, usa la URL base de la API:
+```bash
+cd backend
+cp .env.example .env
+```
+
+Edita `backend/.env` (no se sube a Git) con los valores reales. Sin comillas:
+
+```dotenv
+PORT=3000
+FRONTEND_URL=http://localhost:5173
+
+DB_URL=jdbc:postgresql://HOST-pooler/neondb?sslmode=require
+DB_DIRECT_URL=jdbc:postgresql://HOST/neondb?sslmode=require
+DB_USER=
+DB_PASSWORD=
+
+APP_ADMIN_EMAIL=
+APP_ADMIN_PASSWORD=
+TELEFONO_PELUQUERIA=
+```
+
+- `DB_URL`: conexión de la aplicación (puede usar el host pooled).
+- `DB_DIRECT_URL`: conexión directa para Flyway; si falta, se usa `DB_URL`.
+- `APP_ADMIN_EMAIL` y `APP_ADMIN_PASSWORD`: crean el primer administrador solo si todavía no existe
+  ningún `ADMIN`. La contraseña debe tener al menos 8 caracteres.
+- `TELEFONO_PELUQUERIA`: teléfono corporativo que muestra la interfaz.
+- `JWT_SECRET`: se agregará con la historia de inicio de sesión.
+
+`application.properties` solo contiene referencias `${...}`; nunca valores reales.
+
+### 3. Backend
+
+```bash
+cd backend
+./mvnw spring-boot:run
+```
+
+La API queda en `http://localhost:3000`. Al arrancar, Flyway aplica las migraciones pendientes y
+Hibernate valida el esquema; no crea ni modifica tablas por su cuenta.
+
+### 4. Frontend
+
+```bash
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
+```
+
+`frontend/.env` solo necesita:
 
 ```dotenv
 VITE_API_URL=http://localhost:3000/api
 ```
 
-Vite solo carga las variables con prefijo `VITE_` en el navegador. Reinicia el servidor de desarrollo si cambias este archivo.
+Abre la dirección que muestra Vite, normalmente `http://localhost:5173`.
 
-### 3. Instalar dependencias
-
-No hay un `package.json` en la raiz; instala las dependencias de cada aplicacion por separado:
-
-```bash
-npm --prefix backend install
-npm --prefix frontend install
-```
-
-### 4. Iniciar el proyecto
-
-Abre dos terminales desde la raiz del repositorio.
-
-Terminal 1, API Express:
-
-```bash
-npm --prefix backend run dev
-```
-
-Terminal 2, interfaz Vue/Vite:
-
-```bash
-npm --prefix frontend run dev
-```
-
-Abre la direccion local que muestra Vite, normalmente `http://localhost:5173`.
-
-### 5. Comprobar la conexion
-
-Comprueba la API desde una terminal:
+## Endpoint de salud
 
 ```bash
 curl http://localhost:3000/api/health
 ```
 
-La respuesta esperada es:
+Respuesta esperada:
 
 ```json
 { "status": "ok" }
 ```
 
-La vista de salud del frontend tambien muestra esta respuesta. Este endpoint confirma que Express esta respondiendo, pero no comprueba una conexion con PostgreSQL.
+La vista inicial del frontend también muestra este estado.
 
-### Prisma y base de datos
+## Base de datos y migraciones
 
-Prisma usa `DATABASE_URL` para la conexion de la aplicacion y `DIRECT_URL` para operaciones de esquema. El esquema esta en `backend/prisma/schema.prisma`, pero por ahora no contiene modelos ni migraciones de tablas de la aplicacion. Cuando se agreguen modelos, genera el cliente y crea una migracion desde una base local:
+- El esquema **solo** cambia con migraciones en `backend/src/main/resources/db/migration/`.
+- La migración inicial es `V1__crear_usuarios.sql`.
+- Nunca edites una migración ya aplicada: crea una nueva (`V2__...sql`, `V3__...sql`).
+- `spring.jpa.hibernate.ddl-auto=validate`; no se usa `update` ni `create`.
 
-```bash
-npm --prefix backend run prisma:generate
-npm --prefix backend run prisma:migrate
-```
-
-Confirma la migracion en Git junto con los cambios del esquema. Para aplicar migraciones ya creadas a la base compartida de Neon, ejecuta:
+## Comandos de calidad
 
 ```bash
-npm --prefix backend run prisma:deploy
+# Backend
+cd backend
+./mvnw clean verify
+
+# Frontend
+cd frontend
+npm run lint
+npm run build
 ```
 
-Acuerden quien las aplica y no ejecuten cambios de esquema simultaneamente. No uses una base compartida de produccion para desarrollo.
+La prueba que levanta todo el contexto está deshabilitada hasta que el equipo configure una base de
+datos PostgreSQL de pruebas.
 
-### Comandos de calidad
+## Gestión de tareas
 
-```bash
-npm --prefix backend run lint
-npm --prefix backend test
-npm --prefix frontend run lint
-npm --prefix frontend run build
-```
+El proyecto se gestiona en el tablero de Trello
+[ingeniería de software](https://trello.com/b/gM0zISBq/ingenieria-de-software). Las listas, las
+convenciones de ramas y el estado actual están en [`docs/trello.md`](docs/trello.md).
 
-El comando de pruebas del backend usa `node --test`; actualmente no hay pruebas definidas.
+## Documentación
 
-### Solucion de problemas
+- [`docs/BRIEF EQUIPO 57 6.pdf`](docs/BRIEF%20EQUIPO%2057%206.pdf): brief del producto.
+- [`docs/trello.md`](docs/trello.md): vinculación y convenciones del tablero.
+- `docs/`: diagramas C4 y contrato de la API (se incorporan conforme avancen las historias).
 
-- `pg_isready` no responde: inicia PostgreSQL y confirma que escucha en el puerto `5432`.
-- Error de autenticacion de PostgreSQL: revisa usuario y contrasena en `backend/.env` y que exista la base `peluqueria`.
-- Error de conexion desde la interfaz: confirma que la API este en el puerto configurado y que `frontend/.env` tenga `VITE_API_URL=http://localhost:3000/api`; reinicia Vite despues de cambiarlo.
-- Puerto ocupado: cambia `PORT` en `backend/.env` y actualiza `VITE_API_URL` con el mismo puerto.
+## Seguridad
 
-No guardes credenciales reales en Git. Los archivos `.env` estan ignorados; solo deben versionarse las plantillas `.env.example` con valores ficticios.
+- No subas archivos `.env`, credenciales de Neon ni secretos.
+- Las contraseñas se guardan con BCrypt.
+- Por defecto todas las rutas requieren autenticación, salvo `GET /api/health`.
+- Los errores de la API usan el formato `{ "error": "CODIGO", "message": "..." }`.

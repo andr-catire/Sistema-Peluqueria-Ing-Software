@@ -1,4 +1,5 @@
-# Documentacion del producto
+# Documentación del producto
 
-Esta carpeta reunira el brief del sistema, los diagramas de contexto y contenedores C4, y el
-contrato de la API. Los artefactos se incorporaran conforme se definan los flujos del negocio.
+Esta carpeta reúne el brief del sistema (`BRIEF EQUIPO 57 6.pdf`), los diagramas de contexto y
+contenedores C4, el contrato de la API y la vinculación con el tablero de Trello (`trello.md`). Los
+artefactos se incorporan conforme se definen los flujos del negocio.
