@@ -8,7 +8,7 @@ Proyecto académico de la UCAB (Ingeniería de Software, Equipo 57-6) con proyec
 | Capa | Tecnología |
 |---|---|
 | Frontend | Vue 3 (Composition API), Vue Router, Pinia, Axios y Vite |
-| Backend | Java 21, Spring Boot y Maven (`./mvnw`) |
+| Backend | Java 25, Spring Boot y Maven (`./mvnw`) |
 | Persistencia | Spring Data JPA (Hibernate) |
 | Esquema | Hibernate (`ddl-auto=update`, sin Flyway en esta iteración) |
 | Seguridad | Spring Security + BCrypt (JWT pendiente) |
@@ -28,7 +28,7 @@ peluqueria/
 
 ## Requisitos
 
-- Java 21.
+- Java 25.
 - Node.js 22 LTS y npm (la versión esperada está en `.nvmrc`).
 - PostgreSQL 16 local o un proyecto PostgreSQL en Neon.
 - Git.
