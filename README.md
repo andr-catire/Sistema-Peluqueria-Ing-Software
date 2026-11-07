@@ -10,7 +10,7 @@ Proyecto académico de la UCAB (Ingeniería de Software, Equipo 57-6) con proyec
 | Frontend | Vue 3 (Composition API), Vue Router, Pinia, Axios y Vite |
 | Backend | Java 21, Spring Boot y Maven (`./mvnw`) |
 | Persistencia | Spring Data JPA (Hibernate) |
-| Migraciones | Flyway |
+| Esquema | Hibernate (`ddl-auto=update`, sin Flyway en esta iteración) |
 | Seguridad | Spring Security + BCrypt (JWT pendiente) |
 | Base de datos | PostgreSQL alojado en Neon |
 
@@ -20,7 +20,7 @@ Proyecto académico de la UCAB (Ingeniería de Software, Equipo 57-6) con proyec
 peluqueria/
 ├─ backend/                 API Spring Boot, reglas de negocio y pruebas
 │  └─ src/main/resources/
-│     └─ db/migration/      Migraciones Flyway
+│     └─ application.properties
 ├─ frontend/                Aplicación Vue 3 + Vite
 ├─ docs/                    Brief, diagramas C4, contrato de API y Trello
 └─ README.md
@@ -59,7 +59,6 @@ En **Connect**, seleccionen la rama `development`, la base `neondb` y el rol de 
 cadenas conservando los parámetros SSL:
 
 - **Connection pooling activado** para `DB_URL` (el host suele contener `-pooler`).
-- **Connection pooling desactivado** para `DB_DIRECT_URL` (host directo, lo usa Flyway).
 
 Spring necesita el formato JDBC. El usuario y la contraseña van separados de la URL:
 
@@ -80,7 +79,6 @@ PORT=3000
 FRONTEND_URL=http://localhost:5173
 
 DB_URL=jdbc:postgresql://HOST-pooler.REGION.aws.neon.tech/neondb?sslmode=require
-DB_DIRECT_URL=jdbc:postgresql://HOST.REGION.aws.neon.tech/neondb?sslmode=require
 DB_USER=
 DB_PASSWORD=
 
@@ -100,8 +98,6 @@ Dónde obtener cada valor:
 - **`DB_URL`**: Neon Dashboard > proyecto > **Connect**; rama `development`, base `neondb`, rol de
   desarrollo y **Connection pooling activado** (host con `-pooler`). Convierte
   `postgresql://...` en `jdbc:postgresql://...`.
-- **`DB_DIRECT_URL`**: igual, pero con **Connection pooling desactivado** (host directo, sin
-  `-pooler`). Flyway la usa para aplicar las migraciones.
 - **`DB_USER` y `DB_PASSWORD`**: usuario y contraseña del rol de Neon; aparecen en la cadena de
   conexión o en **Project > Roles**.
 - **`APP_ADMIN_EMAIL` y `APP_ADMIN_PASSWORD`**: los elige el equipo; crean el primer `ADMIN` solo si
@@ -121,8 +117,8 @@ cd backend
 ./mvnw spring-boot:run
 ```
 
-La API queda en `http://localhost:3000`. Al arrancar, Flyway aplica las migraciones pendientes y
-Hibernate valida el esquema; no crea ni modifica tablas por su cuenta.
+La API queda en `http://localhost:3000`. Al arrancar, Hibernate crea o actualiza las tablas a partir
+de las entidades `@Entity` (`spring.jpa.hibernate.ddl-auto=update`).
 
 ### 4. Frontend
 
@@ -157,12 +153,14 @@ Respuesta esperada:
 
 La vista inicial del frontend también muestra este estado.
 
-## Base de datos y migraciones
+## Base de datos y esquema
 
-- El esquema **solo** cambia con migraciones en `backend/src/main/resources/db/migration/`.
-- La migración inicial es `V1__crear_usuarios.sql`.
-- Nunca edites una migración ya aplicada: crea una nueva (`V2__...sql`, `V3__...sql`).
-- `spring.jpa.hibernate.ddl-auto=validate`; no se usa `update` ni `create`.
+- En esta iteración no se usa Flyway ni existen scripts en `backend/src/main/resources/db/migration/`.
+- Hibernate administra el esquema con `spring.jpa.hibernate.ddl-auto=update`.
+- `mvn compile` no crea tablas; se crean o actualizan al arrancar la aplicación con `./mvnw spring-boot:run`.
+- `update` no crea la restricción de exclusión anti-doble-reserva ni los índices parciales que definían
+  las migraciones. Esa garantía queda pendiente para cuando se reintroduzca Flyway.
+- No usar `update` en producción.
 
 ## Comandos de calidad
 
