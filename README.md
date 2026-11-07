@@ -153,6 +153,34 @@ Respuesta esperada:
 
 La vista inicial del frontend también muestra este estado.
 
+## Registro y gestión de personal
+
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| `POST` | `/api/auth/registro` | Público | Crea una cuenta con rol `CLIENTE` y su ficha de cliente. |
+| `GET` | `/api/personal/buscar?email=...` | `ADMIN` | Devuelve los datos básicos de una cuenta `CLIENTE` por correo. |
+| `POST` | `/api/personal/promover` | `ADMIN` | Convierte la cuenta `CLIENTE` en `PERSONAL`, elimina su ficha de cliente y le asigna servicios. |
+| `GET` | `/api/personal/mi-perfil` | `PERSONAL` | Perfil del estilista autenticado, con sus servicios. |
+| `DELETE` | `/api/personal/{idEstilista}/desvincular` | `ADMIN` | Cambia el rol a `CLIENTE` y vacía sus servicios sin borrar la fila `personal`. |
+
+Reglas de integridad aplicadas:
+
+- La promoción solo acepta cuentas con rol `CLIENTE`. Al promover, se elimina la ficha de `clientes`
+  para que no existan dos perfiles sobre el mismo usuario. Si esa ficha tiene citas, la promoción se
+  bloquea con `CLIENT_WITH_APPOINTMENTS` hasta que se reasignen o cancelen.
+- No se pueden asignar servicios inactivos (`INACTIVE_SERVICE`).
+- La desvinculación se bloquea con `PENDING_APPOINTMENTS` si el estilista tiene citas futuras en
+  estado `PENDIENTE` o `CONFIRMADA`. La fila `personal` se conserva para no romper las citas y
+  asistencias históricas.
+
+El registro todavía no emite token: el inicio de sesión y el filtro JWT pertenecen a otra historia.
+Las rutas `ADMIN` y `PERSONAL` ya están protegidas con `@PreAuthorize`; mientras no exista el filtro
+JWT, se prueban con `@WithMockUser` en las pruebas de seguridad.
+
+Para probar el flujo por `curl` o Postman sin frontend, sigue
+[`docs/pruebas-manuales-estilistas.md`](docs/pruebas-manuales-estilistas.md). El backend incluye
+HTTP Basic opcional con `APP_BASIC_AUTH=true`, apagado por defecto y solo para desarrollo local.
+
 ## Base de datos y esquema
 
 - En esta iteración no se usa Flyway ni existen scripts en `backend/src/main/resources/db/migration/`.
@@ -193,5 +221,5 @@ las tareas y el estado actual del equipo.
 
 - No subas archivos `.env`, credenciales de Neon ni secretos.
 - Las contraseñas se guardan con BCrypt.
-- Por defecto todas las rutas requieren autenticación, salvo `GET /api/health`.
+- Por defecto todas las rutas requieren autenticación, salvo `GET /api/health` y `POST /api/auth/registro`.
 - Los errores de la API usan el formato `{ "error": "CODIGO", "message": "..." }`.

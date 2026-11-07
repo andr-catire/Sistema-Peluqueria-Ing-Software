@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flujo de estilistas · Diagrama de secuencia</title>
+  <style>
+    :root {
+      --color-powder-blue: #d5e0ea;
+      --color-slate-bloom: #a3bfdb;
+      --color-warm-ink: #231f20;
+      --color-true-black: #000000;
+      --color-paper-white: #ffffff;
+      --color-mist-gray: #5f6368;
+
+      --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      --weight-light: 300;
+      --weight-regular: 400;
+      --weight-medium: 500;
+
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-12: 48px;
+
+      --radius-base: 2px;
+      --radius-pill: 60px;
+      --border-ink: 1px solid var(--color-warm-ink);
+      --border-soft: 1px solid var(--color-powder-blue);
+      --page-max: 1200px;
+
+      --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+      --dur-base: 180ms;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--color-paper-white);
+      color: var(--color-warm-ink);
+      font-family: var(--font-sans);
+      font-weight: var(--weight-light);
+      line-height: 1.33;
+    }
+
+    .cabecera {
+      background: var(--color-powder-blue);
+      border-bottom: var(--border-ink);
+      padding: var(--space-8) var(--space-6);
+    }
+
+    .cabecera__interior,
+    .contenedor {
+      width: 100%;
+      max-width: var(--page-max);
+      margin: 0 auto;
+    }
+
+    .etiqueta {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin: 0;
+      color: var(--color-warm-ink);
+      font-size: 11px;
+      font-weight: var(--weight-medium);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .etiqueta::before {
+      content: "";
+      width: 24px;
+      height: 1px;
+      background: var(--color-warm-ink);
+    }
+
+    h1 {
+      margin: var(--space-3) 0 var(--space-2);
+      font-size: clamp(28px, 4vw, 36px);
+      font-weight: var(--weight-light);
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitulo {
+      margin: 0;
+      max-width: 78ch;
+      color: var(--color-mist-gray);
+      font-size: 14px;
+      font-weight: var(--weight-light);
+    }
+
+    .contenedor {
+      padding: var(--space-6);
+    }
+
+    .barra {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-2);
+      margin-bottom: var(--space-4);
+    }
+
+    .barra__grupo {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+
+    button {
+      min-height: 44px;
+      padding: 0 var(--space-4);
+      border: var(--border-soft);
+      border-radius: var(--radius-base);
+      background: var(--color-paper-white);
+      color: var(--color-warm-ink);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: var(--weight-medium);
+      line-height: 1;
+      cursor: pointer;
+      transition: background-color var(--dur-base) var(--ease-out),
+                  border-color var(--dur-base) var(--ease-out),
+                  transform var(--dur-base) var(--ease-out);
+    }
+
+    button:hover { background: var(--color-powder-blue); }
+    button:active { transform: scale(0.97); }
+
+    button:focus-visible,
+    summary:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid var(--color-warm-ink);
+      outline-offset: 2px;
+    }
+
+    button.primario {
+      border-color: var(--color-slate-bloom);
+      border-radius: var(--radius-pill);
+      background: var(--color-slate-bloom);
+      color: var(--color-warm-ink);
+    }
+
+    button.primario:hover {
+      background: color-mix(in srgb, var(--color-slate-bloom) 88%, var(--color-warm-ink));
+    }
+
+    .estado {
+      min-height: 18px;
+      margin: 0 0 0 auto;
+      color: var(--color-mist-gray);
+      font-size: 12px;
+      font-weight: var(--weight-regular);
+    }
+
+    .tarjeta {
+      border: var(--border-ink);
+      border-radius: var(--radius-base);
+      background: var(--color-paper-white);
+      padding: var(--space-4);
+      overflow: auto;
+    }
+
+    #diagrama {
+      min-height: 240px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+    }
+
+    #diagrama svg {
+      display: block;
+      height: auto;
+      max-width: none;
+    }
+
+    .mensaje-error {
+      width: 100%;
+      border-bottom: 2px solid var(--color-true-black);
+      padding: var(--space-4) 0;
+      color: var(--color-warm-ink);
+      font-size: 14px;
+    }
+
+    .cargando {
+      width: 100%;
+      padding: var(--space-6);
+      color: var(--color-mist-gray);
+      font-size: 14px;
+    }
+
+    details {
+      margin-top: var(--space-4);
+      border-top: var(--border-soft);
+      padding-top: var(--space-4);
+    }
+
+    summary {
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      color: var(--color-warm-ink);
+      font-size: 14px;
+      font-weight: var(--weight-medium);
+      cursor: pointer;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 320px;
+      margin-top: var(--space-2);
+      padding: var(--space-3);
+      border: var(--border-soft);
+      border-radius: var(--radius-base);
+      background: var(--color-paper-white);
+      color: var(--color-warm-ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      font-weight: var(--weight-regular);
+      line-height: 1.5;
+      resize: vertical;
+    }
+
+    .pie {
+      margin: var(--space-4) 0 0;
+      color: var(--color-mist-gray);
+      font-size: 12px;
+      font-weight: var(--weight-regular);
+    }
+
+    @media (max-width: 640px) {
+      .cabecera { padding: var(--space-6) var(--space-4); }
+      .contenedor { padding: var(--space-4); }
+      .estado { margin-left: 0; width: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+      button:active { transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="cabecera">
+    <div class="cabecera__interior">
+      <p class="etiqueta">Documentación técnica</p>
+      <h1>Flujo de registro, promoción y desvinculación de estilistas</h1>
+      <p class="subtitulo">
+        Diagrama de secuencia de los cinco pasos del negocio: registro público, búsqueda por correo,
+        promoción a empleado, perfil del estilista autenticado y desvinculación segura sin borrado físico.
+      </p>
+    </div>
+  </header>
+
+  <main class="contenedor">
+    <div class="barra" aria-label="Acciones del diagrama">
+      <div class="barra__grupo">
+        <button type="button" id="botonCopiar">Copiar código Mermaid</button>
+        <button type="button" id="botonSvg">Descargar SVG</button>
+        <button type="button" class="primario" id="botonPng">Descargar PNG</button>
+      </div>
+      <div class="barra__grupo" aria-label="Zoom del diagrama">
+        <button type="button" id="botonAlejar" aria-label="Alejar el diagrama">Alejar</button>
+        <button type="button" id="botonAcercar" aria-label="Acercar el diagrama">Acercar</button>
+        <button type="button" id="botonAjustar" aria-label="Restablecer el zoom al 100 por ciento">100 %</button>
+      </div>
+      <p class="estado" id="estado" role="status" aria-live="polite"></p>
+    </div>
+
+    <section class="tarjeta" aria-label="Diagrama de secuencia del flujo de estilistas">
+      <div id="diagrama">
+        <p class="cargando">Cargando diagrama…</p>
+      </div>
+    </section>
+
+    <details>
+      <summary>Código Mermaid del diagrama</summary>
+      <textarea id="codigoVisible" readonly aria-label="Código Mermaid del diagrama"></textarea>
+    </details>
+
+    <p class="pie">
+      El diagrama se genera con Mermaid.js. Los botones exportan la imagen tal como se ve en pantalla;
+      para incrustarlo en documentación usa preferentemente el SVG.
+    </p>
+  </main>
+
+  <script type="text/plain" id="codigoMermaid">
+sequenceDiagram
+    autonumber
+    actor C as Cliente
+    actor A as Administrador
+    actor P as Estilista autenticado
+    participant FE as Frontend Vue
+    participant AC as AuthController
+    participant AS as AuthService
+    participant EC as EstilistaController
+    participant ES as EstilistaService
+    participant UAC as UsuarioActual
+    participant RU as RepositorioUsuario
+    participant RC as RepositorioCliente
+    participant RE as RepositorioEstilista
+    participant RS as RepositorioServicio
+    participant DB as PostgreSQL en Neon
+
+    Note over C,DB: PASO 1 - Registro público - POST /api/auth/registro
+    C->>FE: Completa nombre, correo, contraseña, cédula y teléfono
+    FE->>AC: POST /api/auth/registro con RegistroRequest
+    AC->>AS: registrar(solicitud)
+    AS->>RU: existsByEmailIgnoreCase(correo normalizado)
+    RU->>DB: SELECT de usuarios por correo
+    DB-->>RU: resultado
+    RU-->>AS: true o false
+    alt El correo ya está registrado
+        AS-->>AC: ExcepcionReglaNegocio EMAIL_TAKEN con estado 409
+        AC-->>FE: 409 Conflict
+        FE-->>C: Muestra el error y no crea la cuenta
+    else El correo está libre
+        AS->>RC: existsByCedulaIgnoreCase(cédula)
+        RC->>DB: SELECT de clientes por cédula
+        DB-->>RC: resultado
+        RC-->>AS: true o false
+        alt La cédula ya está registrada
+            AS-->>AC: ExcepcionReglaNegocio CEDULA_TAKEN con estado 409
+            AC-->>FE: 409 Conflict
+            FE-->>C: Muestra el error y no crea la cuenta
+        else Cédula y correo disponibles
+            AS->>AS: passwordEncoder.encode(contraseña)
+            AS->>AS: new Cliente con Rol.CLIENTE y activo en true
+            AS->>RC: save(cliente)
+            RC->>DB: INSERT en usuarios y en clientes
+            DB-->>RC: id generado
+            RC-->>AS: Cliente persistido
+            AS-->>AC: RegistroRespuesta con id, nombre, correo y rol
+            AC-->>FE: 201 Created
+            FE-->>C: Cuenta creada sin token, el login es otra historia
+        end
+    end
+
+    Note over A,DB: PASO 2 - Búsqueda de una cuenta CLIENTE - GET /api/personal/buscar?email=...
+    A->>FE: Escribe el correo de la cuenta que quiere promocionar
+    FE->>EC: GET /api/personal/buscar con el correo
+    EC->>EC: @PreAuthorize hasRole('ADMIN')
+    alt La sesión no es de administrador
+        EC-->>FE: 403 Forbidden
+        FE-->>A: Muestra que no tiene permisos
+    else La sesión es de administrador
+        EC->>ES: buscarPorEmail(email)
+        ES->>RU: findByEmailIgnoreCase(email normalizado)
+        RU->>DB: SELECT de usuarios por correo
+        DB-->>RU: fila o vacío
+        RU-->>ES: Optional de Usuario
+        alt La cuenta no existe
+            ES-->>EC: ExcepcionRecursoNoEncontrado con estado 404
+            EC-->>FE: 404 Not Found
+            FE-->>A: Muestra que no existe la cuenta
+        else La cuenta existe
+            alt El rol no es CLIENTE
+                ES-->>EC: ExcepcionReglaNegocio NOT_PROMOTABLE con estado 409
+                EC-->>FE: 409 Conflict
+                FE-->>A: Indica que la cuenta ya no se puede promover
+            else El rol es CLIENTE
+                ES-->>EC: UsuarioBusquedaRespuesta con id, nombre, correo y rol
+                EC-->>FE: 200 OK
+                FE-->>A: Autocompleta el formulario de promoción
+            end
+        end
+    end
+
+    Note over A,DB: PASO 3 - Promoción a estilista - POST /api/personal/promover
+    A->>FE: Envía idUsuario y serviciosIds
+    FE->>EC: POST /api/personal/promover con EstilistaRequest
+    EC->>EC: @PreAuthorize hasRole('ADMIN')
+    alt La sesión no es de administrador
+        EC-->>FE: 403 Forbidden
+    else La sesión es de administrador
+        EC->>ES: promoverAEmpleado(solicitud) dentro de @Transactional
+        ES->>RU: findById(idUsuario)
+        RU->>DB: SELECT de usuarios por id
+        DB-->>RU: fila o vacío
+        RU-->>ES: Optional de Usuario
+        alt La cuenta no existe
+            ES-->>EC: ExcepcionRecursoNoEncontrado con estado 404
+            EC-->>FE: 404 Not Found
+        else La cuenta existe
+            alt El rol es ADMIN
+                ES-->>EC: ExcepcionReglaNegocio INVALID_ROLE con estado 409
+                EC-->>FE: 409 Conflict
+            else El rol es PERSONAL
+                ES-->>EC: ExcepcionReglaNegocio ALREADY_EMPLOYEE con estado 409
+                EC-->>FE: 409 Conflict
+            else El rol es CLIENTE
+                ES->>RS: findAllById(serviciosIds)
+                RS->>DB: SELECT de servicios por id
+                DB-->>RS: filas encontradas
+                RS-->>ES: List de Servicio
+                alt Falta algún servicio solicitado
+                    ES-->>EC: ExcepcionRecursoNoEncontrado con estado 404
+                    EC-->>FE: 404 Not Found
+                else Todos los servicios existen
+                    alt Algún servicio está inactivo
+                        ES-->>EC: ExcepcionReglaNegocio INACTIVE_SERVICE con estado 409
+                        EC-->>FE: 409 Conflict
+                    else Todos los servicios están activos
+                        ES->>RC: existePerfil(idUsuario)
+                        RC->>DB: SELECT EXISTS en clientes
+                        DB-->>RC: true o false
+                        RC-->>ES: tieneFichaCliente
+                        alt La cuenta tiene ficha de cliente
+                            ES->>RC: tieneCitas(idUsuario)
+                            RC->>DB: SELECT EXISTS en citas
+                            DB-->>RC: true o false
+                            RC-->>ES: tieneCitas
+                            alt La cuenta tiene citas como cliente
+                                ES-->>EC: ExcepcionReglaNegocio CLIENT_WITH_APPOINTMENTS con estado 409
+                                EC-->>FE: 409 Conflict
+                                FE-->>A: Pide reasignar o cancelar las citas
+                            else La cuenta no tiene citas
+                                ES->>ES: usuario.setRol(Rol.PERSONAL)
+                                ES->>RU: saveAndFlush(usuario)
+                                RU->>DB: UPDATE de usuarios con rol PERSONAL
+                                ES->>RC: eliminarPerfil(idUsuario)
+                                RC->>DB: DELETE FROM clientes
+                                ES->>RE: insertarPerfil(idUsuario)
+                                RE->>DB: INSERT en personal con ON CONFLICT DO NOTHING
+                                loop Por cada servicio solicitado
+                                    ES->>RE: asignarServicio(idUsuario, idServicio)
+                                    RE->>DB: INSERT en personal_servicios con ON CONFLICT DO NOTHING
+                                end
+                                ES-->>EC: EstilistaRespuesta con los servicios asignados
+                                EC-->>FE: 201 Created
+                                FE-->>A: Confirma el estilista promovido y la cuenta deja de ser cliente
+                            end
+                        else La cuenta no tiene ficha de cliente
+                            ES->>ES: usuario.setRol(Rol.PERSONAL)
+                            ES->>RU: saveAndFlush(usuario)
+                            RU->>DB: UPDATE de usuarios con rol PERSONAL
+                            ES->>RE: insertarPerfil(idUsuario)
+                            RE->>DB: INSERT en personal con ON CONFLICT DO NOTHING
+                            loop Por cada servicio solicitado
+                                ES->>RE: asignarServicio(idUsuario, idServicio)
+                                RE->>DB: INSERT en personal_servicios con ON CONFLICT DO NOTHING
+                            end
+                            ES-->>EC: EstilistaRespuesta con los servicios asignados
+                            EC-->>FE: 201 Created
+                            FE-->>A: Confirma el estilista promovido
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    Note over P,DB: PASO 4 - Perfil del estilista - GET /api/personal/mi-perfil
+    P->>FE: Abre su perfil
+    FE->>EC: GET /api/personal/mi-perfil con Authorization Bearer JWT
+    EC->>EC: @PreAuthorize hasRole('PERSONAL')
+    alt La sesión no es de personal
+        EC-->>FE: 403 Forbidden
+    else La sesión es de personal
+        EC->>UAC: id()
+        UAC->>UAC: SecurityContextHolder.getContext().getAuthentication()
+        UAC->>RU: findByEmailIgnoreCase(correo del token)
+        RU->>DB: SELECT de usuarios por correo
+        DB-->>RU: fila
+        RU-->>UAC: Usuario autenticado
+        UAC-->>EC: idUsuario tomado del token y nunca de la URL
+        EC->>ES: obtenerMiPerfil(idUsuario)
+        ES->>RE: existePerfil(idUsuario)
+        RE->>DB: SELECT EXISTS en personal
+        DB-->>RE: true o false
+        RE-->>ES: existePerfil
+        alt No existe la fila personal
+            ES-->>EC: ExcepcionRecursoNoEncontrado con estado 404
+            EC-->>FE: 404 Not Found
+        else La fila personal existe
+            ES->>RU: findById(idUsuario)
+            RU->>DB: SELECT de usuarios por id
+            DB-->>RU: fila
+            RU-->>ES: Usuario
+            ES->>RE: buscarServicios(idUsuario)
+            RE->>DB: SELECT de servicios con personal_servicios
+            DB-->>RE: servicios asignados
+            RE-->>ES: List de Servicio
+            ES-->>EC: EstilistaRespuesta con la lista de ServicioRespuesta
+            EC-->>FE: 200 OK
+            FE-->>P: Muestra su perfil y sus servicios asignados
+        end
+    end
+
+    Note over A,DB: PASO 5 - Desvinculación segura - DELETE /api/personal/{idEstilista}/desvincular
+    A->>FE: Elige el estilista que quiere desvincular
+    FE->>EC: DELETE /api/personal/{idEstilista}/desvincular
+    EC->>EC: @PreAuthorize hasRole('ADMIN')
+    alt La sesión no es de administrador
+        EC-->>FE: 403 Forbidden
+    else La sesión es de administrador
+        EC->>ES: desvincularEstilista(idEstilista) dentro de @Transactional
+        ES->>RE: existePerfil(idEstilista)
+        RE->>DB: SELECT EXISTS en personal
+        DB-->>RE: true o false
+        RE-->>ES: existePerfil
+        alt El estilista no existe
+            ES-->>EC: ExcepcionRecursoNoEncontrado con estado 404
+            EC-->>FE: 404 Not Found
+        else El estilista existe
+            ES->>RU: findById(idEstilista)
+            RU->>DB: SELECT de usuarios por id
+            DB-->>RU: fila o vacío
+            RU-->>ES: Optional de Usuario
+            alt El usuario no existe
+                ES-->>EC: ExcepcionRecursoNoEncontrado con estado 404
+                EC-->>FE: 404 Not Found
+            else El usuario existe
+                alt El rol no es PERSONAL
+                    ES-->>EC: ExcepcionReglaNegocio NOT_EMPLOYEE con estado 409
+                    EC-->>FE: 409 Conflict
+                else El estilista está activo
+                    ES->>RE: tieneCitasFuturasActivas(idEstilista)
+                    RE->>DB: SELECT EXISTS en citas y agendas con estado PENDIENTE o CONFIRMADA y fecha mayor o igual a hoy
+                    DB-->>RE: true o false
+                    RE-->>ES: tieneCitasFuturasActivas
+                    alt Tiene citas futuras pendientes o confirmadas
+                        ES-->>EC: ExcepcionReglaNegocio PENDING_APPOINTMENTS con estado 409
+                        EC-->>FE: 409 Conflict
+                        FE-->>A: Pide reasignar o cancelar las citas antes de desvincular
+                    else No tiene citas futuras activas
+                        ES->>RE: eliminarServicios(idEstilista)
+                        RE->>DB: DELETE de personal_servicios
+                        ES->>RU: actualizarRol(idEstilista, Rol.CLIENTE)
+                        RU->>DB: UPDATE de usuarios con rol CLIENTE
+                        Note over RE,DB: No se ejecuta delete() sobre personal porque citas y asistencias la referencian
+                        ES-->>EC: Operación completada
+                        EC-->>FE: 204 No Content
+                        FE-->>A: Confirma la desvinculación
+                    end
+                end
+            end
+        end
+    end
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      var origen = document.getElementById("codigoMermaid").textContent.trim();
+      var contenedor = document.getElementById("diagrama");
+      var estado = document.getElementById("estado");
+      var codigoVisible = document.getElementById("codigoVisible");
+      var zoom = 1;
+      var anchoNatural = 0;
+
+      codigoVisible.value = origen;
+
+      function avisar(texto) {
+        estado.textContent = texto;
+      }
+
+      function aplicarZoom() {
+        var svg = contenedor.querySelector("svg");
+        if (!svg) {
+          return;
+        }
+        if (!anchoNatural) {
+          anchoNatural = svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width
+            ? svg.viewBox.baseVal.width
+            : svg.getBoundingClientRect().width;
+        }
+        svg.style.maxWidth = "none";
+        svg.style.width = Math.round(anchoNatural * zoom) + "px";
+        svg.style.height = "auto";
+      }
+
+      function descargar(blob, nombre) {
+        var url = URL.createObjectURL(blob);
+        var enlace = document.createElement("a");
+        enlace.href = url;
+        enlace.download = nombre;
+        document.body.appendChild(enlace);
+        enlace.click();
+        enlace.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      function svgSerializado() {
+        var svg = contenedor.querySelector("svg");
+        if (!svg) {
+          return null;
+        }
+        var clon = svg.cloneNode(true);
+        clon.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        clon.removeAttribute("style");
+        if (anchoNatural) {
+          clon.setAttribute("width", Math.round(anchoNatural));
+          clon.setAttribute("height", Math.round(anchoNatural * (clon.viewBox.baseVal.height / clon.viewBox.baseVal.width)));
+        }
+        return { nodo: clon, texto: new XMLSerializer().serializeToString(clon) };
+      }
+
+      document.getElementById("botonCopiar").addEventListener("click", function () {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(origen)
+            .then(function () { avisar("Código Mermaid copiado."); })
+            .catch(function () { seleccionarCodigo(); });
+        } else {
+          seleccionarCodigo();
+        }
+      });
+
+      function seleccionarCodigo() {
+        codigoVisible.focus();
+        codigoVisible.select();
+        try {
+          document.execCommand("copy");
+          avisar("Código Mermaid copiado.");
+        } catch (error) {
+          avisar("Selecciona el código y cópialo manualmente.");
+        }
+      }
+
+      document.getElementById("botonSvg").addEventListener("click", function () {
+        var svg = svgSerializado();
+        if (!svg) {
+          avisar("El diagrama todavía no está listo.");
+          return;
+        }
+        descargar(new Blob([svg.texto], { type: "image/svg+xml;charset=utf-8" }), "flujo-estilistas.svg");
+        avisar("SVG descargado.");
+      });
+
+      document.getElementById("botonPng").addEventListener("click", function () {
+        var svg = svgSerializado();
+        if (!svg) {
+          avisar("El diagrama todavía no está listo.");
+          return;
+        }
+
+        var caja = svg.nodo.viewBox.baseVal;
+        var ancho = caja && caja.width ? caja.width : anchoNatural;
+        var alto = caja && caja.height ? caja.height : 0;
+        var escala = 2;
+        var datos = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg.texto)));
+        var imagen = new Image();
+
+        imagen.onload = function () {
+          var lienzo = document.createElement("canvas");
+          lienzo.width = Math.ceil(ancho * escala);
+          lienzo.height = Math.ceil(alto * escala);
+          var contexto = lienzo.getContext("2d");
+          contexto.fillStyle = "#ffffff";
+          contexto.fillRect(0, 0, lienzo.width, lienzo.height);
+          contexto.scale(escala, escala);
+          contexto.drawImage(imagen, 0, 0, ancho, alto);
+          lienzo.toBlob(function (blob) {
+            if (blob) {
+              descargar(blob, "flujo-estilistas.png");
+              avisar("PNG descargado.");
+            } else {
+              avisar("No se pudo generar el PNG. Usa la descarga SVG.");
+            }
+          }, "image/png");
+        };
+
+        imagen.onerror = function () {
+          avisar("No se pudo generar el PNG. Usa la descarga SVG.");
+        };
+
+        imagen.src = datos;
+      });
+
+      document.getElementById("botonAlejar").addEventListener("click", function () {
+        zoom = Math.max(0.5, zoom - 0.15);
+        aplicarZoom();
+        avisar("Zoom al " + Math.round(zoom * 100) + " %.");
+      });
+
+      document.getElementById("botonAcercar").addEventListener("click", function () {
+        zoom = Math.min(3, zoom + 0.15);
+        aplicarZoom();
+        avisar("Zoom al " + Math.round(zoom * 100) + " %.");
+      });
+
+      document.getElementById("botonAjustar").addEventListener("click", function () {
+        zoom = 1;
+        aplicarZoom();
+        avisar("Zoom restablecido al 100 %.");
+      });
+
+      if (window.mermaid) {
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: "loose",
+          theme: "base",
+          fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+          themeVariables: {
+            background: "#ffffff",
+            primaryColor: "#d5e0ea",
+            primaryTextColor: "#231f20",
+            primaryBorderColor: "#231f20",
+            secondaryColor: "#ffffff",
+            tertiaryColor: "#ffffff",
+            lineColor: "#231f20",
+            textColor: "#231f20",
+            fontSize: "13px",
+            actorBkg: "#ffffff",
+            actorBorder: "#231f20",
+            actorTextColor: "#231f20",
+            actorLineColor: "#d5e0ea",
+            signalColor: "#231f20",
+            signalTextColor: "#231f20",
+            labelBoxBkgColor: "#d5e0ea",
+            labelBoxBorderColor: "#231f20",
+            labelTextColor: "#231f20",
+            loopTextColor: "#231f20",
+            noteBkgColor: "#d5e0ea",
+            noteBorderColor: "#231f20",
+            noteTextColor: "#231f20",
+            activationBkgColor: "#d5e0ea",
+            activationBorderColor: "#231f20",
+            sequenceNumberColor: "#231f20"
+          }
+        });
+
+        mermaid.render("diagramaEstilistas", origen)
+          .then(function (resultado) {
+            contenedor.innerHTML = resultado.svg;
+            anchoNatural = 0;
+            aplicarZoom();
+            avisar("Diagrama listo. Puedes copiar el código o exportarlo.");
+          })
+          .catch(function (error) {
+            contenedor.innerHTML = "";
+            var aviso = document.createElement("p");
+            aviso.className = "mensaje-error";
+            aviso.textContent = "No se pudo dibujar el diagrama: " + (error && error.message ? error.message : "error desconocido") + ". Revisa el código Mermaid.";
+            contenedor.appendChild(aviso);
+            avisar("Error al dibujar el diagrama.");
+          });
+      } else {
+        contenedor.innerHTML = "";
+        var aviso = document.createElement("p");
+        aviso.className = "mensaje-error";
+        aviso.textContent = "No se pudo cargar Mermaid.js. Verifica tu conexión a internet y vuelve a abrir el archivo.";
+        contenedor.appendChild(aviso);
+        avisar("Mermaid.js no está disponible.");
+      }
+    })();
+  </script>
+</body>
+</html>
