@@ -8,9 +8,9 @@ Proyecto académico de la UCAB (Ingeniería de Software, Equipo 57-6) con proyec
 | Capa | Tecnología |
 |---|---|
 | Frontend | Vue 3 (Composition API), Vue Router, Pinia, Axios y Vite |
-| Backend | Java 21, Spring Boot y Maven (`./mvnw`) |
+| Backend | Java 25, Spring Boot y Maven (`./mvnw`) |
 | Persistencia | Spring Data JPA (Hibernate) |
-| Migraciones | Flyway |
+| Esquema | Hibernate (`ddl-auto=update`, sin Flyway en esta iteración) |
 | Seguridad | Spring Security + BCrypt (JWT pendiente) |
 | Base de datos | PostgreSQL alojado en Neon |
 
@@ -20,7 +20,7 @@ Proyecto académico de la UCAB (Ingeniería de Software, Equipo 57-6) con proyec
 peluqueria/
 ├─ backend/                 API Spring Boot, reglas de negocio y pruebas
 │  └─ src/main/resources/
-│     └─ db/migration/      Migraciones Flyway
+│     └─ application.properties
 ├─ frontend/                Aplicación Vue 3 + Vite
 ├─ docs/                    Brief, diagramas C4, contrato de API y Trello
 └─ README.md
@@ -28,7 +28,7 @@ peluqueria/
 
 ## Requisitos
 
-- Java 21.
+- Java 25.
 - Node.js 22 LTS y npm (la versión esperada está en `.nvmrc`).
 - PostgreSQL 16 local o un proyecto PostgreSQL en Neon.
 - Git.
@@ -59,7 +59,6 @@ En **Connect**, seleccionen la rama `development`, la base `neondb` y el rol de 
 cadenas conservando los parámetros SSL:
 
 - **Connection pooling activado** para `DB_URL` (el host suele contener `-pooler`).
-- **Connection pooling desactivado** para `DB_DIRECT_URL` (host directo, lo usa Flyway).
 
 Spring necesita el formato JDBC. El usuario y la contraseña van separados de la URL:
 
@@ -80,7 +79,6 @@ PORT=3000
 FRONTEND_URL=http://localhost:5173
 
 DB_URL=jdbc:postgresql://HOST-pooler.REGION.aws.neon.tech/neondb?sslmode=require
-DB_DIRECT_URL=jdbc:postgresql://HOST.REGION.aws.neon.tech/neondb?sslmode=require
 DB_USER=
 DB_PASSWORD=
 
@@ -100,8 +98,6 @@ Dónde obtener cada valor:
 - **`DB_URL`**: Neon Dashboard > proyecto > **Connect**; rama `development`, base `neondb`, rol de
   desarrollo y **Connection pooling activado** (host con `-pooler`). Convierte
   `postgresql://...` en `jdbc:postgresql://...`.
-- **`DB_DIRECT_URL`**: igual, pero con **Connection pooling desactivado** (host directo, sin
-  `-pooler`). Flyway la usa para aplicar las migraciones.
 - **`DB_USER` y `DB_PASSWORD`**: usuario y contraseña del rol de Neon; aparecen en la cadena de
   conexión o en **Project > Roles**.
 - **`APP_ADMIN_EMAIL` y `APP_ADMIN_PASSWORD`**: los elige el equipo; crean el primer `ADMIN` solo si
@@ -121,8 +117,8 @@ cd backend
 ./mvnw spring-boot:run
 ```
 
-La API queda en `http://localhost:3000`. Al arrancar, Flyway aplica las migraciones pendientes y
-Hibernate valida el esquema; no crea ni modifica tablas por su cuenta.
+La API queda en `http://localhost:3000`. Al arrancar, Hibernate crea o actualiza las tablas a partir
+de las entidades `@Entity` (`spring.jpa.hibernate.ddl-auto=update`).
 
 ### 4. Frontend
 
@@ -157,12 +153,42 @@ Respuesta esperada:
 
 La vista inicial del frontend también muestra este estado.
 
-## Base de datos y migraciones
+## Registro y gestión de personal
 
-- El esquema **solo** cambia con migraciones en `backend/src/main/resources/db/migration/`.
-- La migración inicial es `V1__crear_usuarios.sql`.
-- Nunca edites una migración ya aplicada: crea una nueva (`V2__...sql`, `V3__...sql`).
-- `spring.jpa.hibernate.ddl-auto=validate`; no se usa `update` ni `create`.
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| `POST` | `/api/auth/registro` | Público | Crea una cuenta con rol `CLIENTE` y su ficha de cliente. |
+| `GET` | `/api/personal/buscar?email=...` | `ADMIN` | Devuelve los datos básicos de una cuenta `CLIENTE` por correo. |
+| `POST` | `/api/personal/promover` | `ADMIN` | Convierte la cuenta `CLIENTE` en `PERSONAL`, elimina su ficha de cliente y le asigna servicios. |
+| `GET` | `/api/personal/mi-perfil` | `PERSONAL` | Perfil del estilista autenticado, con sus servicios. |
+| `DELETE` | `/api/personal/{idEstilista}/desvincular` | `ADMIN` | Cambia el rol a `CLIENTE` y vacía sus servicios sin borrar la fila `personal`. |
+
+Reglas de integridad aplicadas:
+
+- La promoción solo acepta cuentas con rol `CLIENTE`. Al promover, se elimina la ficha de `clientes`
+  para que no existan dos perfiles sobre el mismo usuario. Si esa ficha tiene citas, la promoción se
+  bloquea con `CLIENT_WITH_APPOINTMENTS` hasta que se reasignen o cancelen.
+- No se pueden asignar servicios inactivos (`INACTIVE_SERVICE`).
+- La desvinculación se bloquea con `PENDING_APPOINTMENTS` si el estilista tiene citas futuras en
+  estado `PENDIENTE` o `CONFIRMADA`. La fila `personal` se conserva para no romper las citas y
+  asistencias históricas.
+
+El registro todavía no emite token: el inicio de sesión y el filtro JWT pertenecen a otra historia.
+Las rutas `ADMIN` y `PERSONAL` ya están protegidas con `@PreAuthorize`; mientras no exista el filtro
+JWT, se prueban con `@WithMockUser` en las pruebas de seguridad.
+
+Para probar el flujo por `curl` o Postman sin frontend, sigue
+[`docs/pruebas-manuales-estilistas.md`](docs/pruebas-manuales-estilistas.md). El backend incluye
+HTTP Basic opcional con `APP_BASIC_AUTH=true`, apagado por defecto y solo para desarrollo local.
+
+## Base de datos y esquema
+
+- En esta iteración no se usa Flyway ni existen scripts en `backend/src/main/resources/db/migration/`.
+- Hibernate administra el esquema con `spring.jpa.hibernate.ddl-auto=update`.
+- `mvn compile` no crea tablas; se crean o actualizan al arrancar la aplicación con `./mvnw spring-boot:run`.
+- `update` no crea la restricción de exclusión anti-doble-reserva ni los índices parciales que definían
+  las migraciones. Esa garantía queda pendiente para cuando se reintroduzca Flyway.
+- No usar `update` en producción.
 
 ## Comandos de calidad
 
@@ -195,5 +221,5 @@ las tareas y el estado actual del equipo.
 
 - No subas archivos `.env`, credenciales de Neon ni secretos.
 - Las contraseñas se guardan con BCrypt.
-- Por defecto todas las rutas requieren autenticación, salvo `GET /api/health`.
+- Por defecto todas las rutas requieren autenticación, salvo `GET /api/health` y `POST /api/auth/registro`.
 - Los errores de la API usan el formato `{ "error": "CODIGO", "message": "..." }`.
