@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crear servicio · Diagrama de secuencia</title>
+  <style>
+    html, body { margin: 0; background: #ffffff; color: #0d2b52; }
+    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    #diagrama { padding: 24px; overflow: auto; }
+    #diagrama svg { max-width: none; height: auto; }
+    .error { padding: 24px; color: #0d2b52; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div id="diagrama"></div>
+
+  <script type="text/plain" id="codigo">
+sequenceDiagram
+    autonumber
+    actor A as Administrador
+    participant FE as Frontend
+    participant CS as ControladorServicio
+    participant GS as GestorServicios
+    participant RS as RepositorioServicio
+    participant GI as GestorImagenes
+    participant RI as RepositorioImagenServicio
+    participant DB as PostgreSQL
+
+    Note over A,DB: 1. Formulario y validación en el navegador
+    A->>FE: Abre Crear servicio
+    FE->>FE: Lee nombre, descripción, costo, duración e imagen opcional
+    alt Datos inválidos
+        FE-->>A: Errores bajo nombre, costo o duración
+    else Datos válidos
+        opt Hay imagen seleccionada
+            FE->>FE: Valida JPG, PNG o WEBP y tamaño máximo de 10 MB
+            alt Imagen inválida o demasiado grande
+                FE-->>A: Error bajo el campo Imagen
+            else Imagen válida
+                FE->>FE: Redimensiona a 1600 px y convierte a WebP calidad 0.85
+                FE-->>A: Muestra vista previa
+            end
+        end
+        FE->>CS: POST /api/servicios con JSON o multipart con servicio e imagen
+        CS->>CS: @PreAuthorize hasRole('ADMIN')
+        alt Sin sesión
+            CS-->>FE: 401 UNAUTHORIZED
+        else Sesión sin rol ADMIN
+            CS-->>FE: 403 FORBIDDEN
+        else Sesión ADMIN
+            CS->>GS: crear(solicitud, imagen)
+            GS->>RS: findByNombreIgnoreCase(nombre normalizado)
+            RS->>DB: SELECT de servicios por nombre
+            DB-->>RS: fila o vacío
+            RS-->>GS: Optional de Servicio
+            alt El nombre existe y el servicio está ACTIVO
+                GS-->>CS: ExcepcionReglaNegocio DUPLICATE
+                CS-->>FE: 409 Conflict
+                FE-->>A: Ya existe un servicio con ese nombre.
+            else El nombre existe y el servicio está INACTIVO
+                GS->>GS: Reactiva el mismo servicio y actualiza sus datos
+                GS->>RS: save(servicio)
+                RS->>DB: UPDATE servicios con activo en true
+                opt Llega una imagen nueva
+                    GS->>GI: guardar(idServicio, imagen)
+                    GI->>GI: Valida la firma JPG, PNG o WEBP y el tamaño
+                    alt Imagen inválida o mayor a 10 MB
+                        GI-->>GS: 400 INVALID_IMAGE o FILE_TOO_LARGE
+                        GS-->>CS: rollback de la transacción
+                        CS-->>FE: 400 Bad Request
+                        FE-->>A: Muestra el error de imagen
+                    else Imagen válida
+                        GI->>RI: save(ImagenServicio con id del servicio)
+                        RI->>DB: INSERT o UPDATE en servicio_imagenes
+                        GS->>GS: servicio.tieneImagen = true
+                        GS->>RS: save(servicio)
+                    end
+                end
+                GS-->>CS: ServicioRespuesta con el mismo id e imagenUrl
+                CS-->>FE: 201 Created
+                FE->>FE: Quita la tarjeta del mismo id, inserta la reactivada y ordena
+                FE-->>A: Servicio reactivado
+            else El nombre no existe
+                GS->>GS: Crea un Servicio activo
+                GS->>RS: save(servicio)
+                RS->>DB: INSERT en servicios
+                opt Llega una imagen
+                    GS->>GI: guardar(idServicio, imagen)
+                    GI->>GI: Valida la firma JPG, PNG o WEBP y el tamaño
+                    alt Imagen inválida o mayor a 10 MB
+                        GI-->>GS: 400 INVALID_IMAGE o FILE_TOO_LARGE
+                        GS-->>CS: rollback de la transacción
+                        CS-->>FE: 400 Bad Request
+                        FE-->>A: Muestra el error de imagen
+                    else Imagen válida
+                        GI->>RI: save(ImagenServicio con id del servicio)
+                        RI->>DB: INSERT en servicio_imagenes
+                        GS->>GS: servicio.tieneImagen = true
+                        GS->>RS: save(servicio)
+                    end
+                end
+                GS-->>CS: ServicioRespuesta con id nuevo e imagenUrl
+                CS-->>FE: 201 Created
+                FE->>FE: Inserta la tarjeta nueva y ordena por nombre
+                FE-->>A: Servicio creado
+            end
+        end
+    end
+
+    Note over A,DB: 2. Consulta del catálogo y de la imagen
+    A->>FE: Abre el catálogo
+    FE->>CS: GET /api/servicios
+    CS->>GS: listar()
+    GS->>RS: findByActivoTrueOrderByNombreAsc()
+    RS->>DB: SELECT de servicios activos ordenados por nombre
+    DB-->>RS: servicios activos
+    RS-->>GS: List de Servicio
+    GS-->>CS: List de ServicioRespuesta con imagenUrl
+    CS-->>FE: 200 OK
+    FE->>FE: Pinta las tarjetas con imagen o sin imagen
+    opt La tarjeta tiene imagenUrl
+        FE->>CS: GET /api/servicios/idServicio/imagen
+        CS->>GI: obtener(idServicio)
+        GI->>RI: findById(idServicio)
+        alt El servicio no tiene imagen
+            GI-->>CS: ExcepcionRecursoNoEncontrado
+            CS-->>FE: 404 Not Found
+            FE->>FE: Muestra la tarjeta sin imagen
+        else La imagen existe
+            GI-->>CS: ImagenServicio con tipo y datos
+            CS-->>FE: 200 con image/webp, image/jpeg o image/png
+            FE->>FE: Muestra la imagen en la tarjeta
+        end
+    end
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    (function () {
+      var fuente = document.getElementById('codigo').textContent.trim();
+      var contenedor = document.getElementById('diagrama');
+
+      mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'loose',
+        theme: 'base',
+        themeVariables: {
+          background: '#ffffff',
+          primaryColor: '#e8f1f7',
+          primaryTextColor: '#0d2b52',
+          primaryBorderColor: '#0d2b52',
+          lineColor: '#0d2b52',
+          textColor: '#0d2b52',
+          actorBkg: '#ffffff',
+          actorBorder: '#0d2b52',
+          actorTextColor: '#0d2b52',
+          signalColor: '#0d2b52',
+          signalTextColor: '#0d2b52',
+          noteBkgColor: '#e8f1f7',
+          noteBorderColor: '#0d2b52',
+          noteTextColor: '#0d2b52',
+          fontSize: '13px'
+        }
+      });
+
+      mermaid.render('diagramaCrearServicio', fuente)
+        .then(function (resultado) {
+          contenedor.innerHTML = resultado.svg;
+        })
+        .catch(function () {
+          contenedor.innerHTML = '<p class="error">No se pudo dibujar el diagrama. Revisa el código Mermaid.</p>';
+        });
+    })();
+  </script>
+</body>
+</html>
