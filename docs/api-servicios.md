@@ -24,6 +24,13 @@ Público. Devuelve un servicio activo.
 - `200`: `ServicioRespuesta`.
 - `404`: el servicio no existe o está inactivo (`NOT_FOUND`).
 
+## GET /api/servicios/{id}/estilistas
+Público. Devuelve los estilistas activos que ofrecen un servicio activo, ordenados por nombre.
+La tarjeta de servicio usa esta consulta al abrir sus detalles.
+
+- `200`: lista de `EstilistaResumenRespuesta` (`id`, `nombre`, `email`).
+- `404`: el servicio no existe o está inactivo (`NOT_FOUND`).
+
 ## Formato de error
 ```json
 { "error": "CODIGO", "message": "..." }
