@@ -86,6 +86,11 @@ APP_ADMIN_EMAIL=
 APP_ADMIN_PASSWORD=
 TELEFONO_PELUQUERIA=
 
+HORARIO_ZONA=America/Caracas
+HORARIO_APERTURA=08:00
+HORARIO_CIERRE=18:00
+HORARIO_TOLERANCIA_MINUTOS=0
+
 JPA_SHOW_SQL=false
 # JWT_SECRET=  (pendiente: historia de inicio de sesión)
 ```
@@ -104,6 +109,8 @@ Dónde obtener cada valor:
   no existe ninguno. La contraseña debe tener 8 caracteres o más.
 - **`TELEFONO_PELUQUERIA`**: teléfono corporativo que muestra la interfaz; lo proporciona el dueño
   del salón.
+- **`HORARIO_ZONA`, `HORARIO_APERTURA`, `HORARIO_CIERRE` y `HORARIO_TOLERANCIA_MINUTOS`**: horario
+  del local para la asistencia del personal. La apertura debe ser anterior al cierre.
 - **`JPA_SHOW_SQL`**: `true` solo para depurar SQL; normalmente `false`.
 - **`JWT_SECRET`**: pendiente para la historia de inicio de sesión; se genera con
   `openssl rand -base64 48`.
@@ -135,7 +142,8 @@ VITE_API_URL=http://localhost:3000/api
 ```
 
 `VITE_API_URL` es la URL del backend terminada en `/api`; en producción usa el dominio público del
-backend. Reinicia Vite si cambias este archivo.
+backend. Reinicia Vite si cambias este archivo. Para probar la asistencia sin backend, añade
+`VITE_USE_MOCKS=true` y, si quieres fijar la hora simulada, `VITE_MOCK_HORA=08:12`.
 
 Abre la dirección que muestra Vite, normalmente `http://localhost:5173`.
 
@@ -158,28 +166,26 @@ La vista inicial del frontend también muestra este estado.
 | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|
 | `POST` | `/api/auth/registro` | Público | Crea una cuenta con rol `CLIENTE` y su ficha de cliente. |
-| `GET` | `/api/personal/buscar?email=...` | `ADMIN` | Devuelve los datos básicos de una cuenta `CLIENTE` por correo. |
-| `POST` | `/api/personal/promover` | `ADMIN` | Convierte la cuenta `CLIENTE` en `PERSONAL`, elimina su ficha de cliente y le asigna servicios. |
+| `POST` | `/api/auth/login` | Público | Inicia sesión y devuelve el token JWT. |
+| `POST` | `/api/personal` | `ADMIN` | Crea una cuenta nueva de estilista y le asigna servicios. |
+| `GET` | `/api/personal` | `ADMIN` | Lista estilistas activos con sus servicios. |
 | `GET` | `/api/personal/mi-perfil` | `PERSONAL` | Perfil del estilista autenticado, con sus servicios. |
-| `DELETE` | `/api/personal/{idEstilista}/desvincular` | `ADMIN` | Cambia el rol a `CLIENTE` y vacía sus servicios sin borrar la fila `personal`. |
+| `DELETE` | `/api/personal/{idEstilista}/desvincular` | `ADMIN` | Desactiva la cuenta sin cambiar su rol ni borrar su historial. |
 
 Reglas de integridad aplicadas:
 
-- La promoción solo acepta cuentas con rol `CLIENTE`. Al promover, se elimina la ficha de `clientes`
-  para que no existan dos perfiles sobre el mismo usuario. Si esa ficha tiene citas, la promoción se
-  bloquea con `CLIENT_WITH_APPOINTMENTS` hasta que se reasignen o cancelen.
-- No se pueden asignar servicios inactivos (`INACTIVE_SERVICE`).
-- La desvinculación se bloquea con `PENDING_APPOINTMENTS` si el estilista tiene citas futuras en
-  estado `PENDIENTE` o `CONFIRMADA`. La fila `personal` se conserva para no romper las citas y
-  asistencias históricas.
+- El empleado se crea directamente con `Rol.PERSONAL`; ya no se promueve una cuenta de cliente.
+- El correo debe ser único (`EMAIL_TAKEN`), la contraseña inicial debe tener entre 8 y 72 caracteres
+  y se cifra con BCrypt.
+- Se deben asignar entre 1 y 50 servicios activos (`INACTIVE_SERVICE` si alguno está inactivo).
+- La desactivación conserva el rol `PERSONAL` y bloquea si hay citas `PENDIENTE` o `CONFIRMADA` desde
+  la fecha de hoy en `America/Caracas` (`PENDING_APPOINTMENTS`).
+- Una cuenta desactivada no puede iniciar sesión ni usar un token válido.
 
-El registro todavía no emite token: el inicio de sesión y el filtro JWT pertenecen a otra historia.
-Las rutas `ADMIN` y `PERSONAL` ya están protegidas con `@PreAuthorize`; mientras no exista el filtro
-JWT, se prueban con `@WithMockUser` en las pruebas de seguridad.
-
-Para probar el flujo por `curl` o Postman sin frontend, sigue
-[`docs/pruebas-manuales-estilistas.md`](docs/pruebas-manuales-estilistas.md). El backend incluye
-HTTP Basic opcional con `APP_BASIC_AUTH=true`, apagado por defecto y solo para desarrollo local.
+El registro no emite token: después de crear la cuenta, el usuario inicia sesión para obtenerlo.
+Para probar la API por `curl` o Postman, consulta
+[`docs/api-personal.md`](docs/api-personal.md). El backend incluye HTTP Basic opcional con
+`APP_BASIC_AUTH=true`, apagado por defecto y solo para desarrollo local.
 
 ## Base de datos y esquema
 
