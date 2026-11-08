@@ -1,8 +1,17 @@
 node_modules/
 .env
+env.txt
 dist/
+target/
 .DS_Store
 *.log
+
+# Variables de entorno y secretos
+backend/.env
+frontend/.env
+.env.local
+.env.*.local
+*.local
 
 # Instrucciones y herramientas locales del agente (no se versionan)
 /AGENTS.md

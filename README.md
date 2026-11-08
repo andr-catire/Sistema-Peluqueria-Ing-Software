@@ -11,7 +11,7 @@ Proyecto académico de la UCAB (Ingeniería de Software, Equipo 57-6) con proyec
 | Backend | Java 25, Spring Boot y Maven (`./mvnw`) |
 | Persistencia | Spring Data JPA (Hibernate) |
 | Esquema | Hibernate (`ddl-auto=update`, sin Flyway en esta iteración) |
-| Seguridad | Spring Security + BCrypt (JWT pendiente) |
+| Seguridad | Spring Security + JWT + BCrypt |
 | Base de datos | PostgreSQL alojado en Neon |
 
 ## Estructura
@@ -87,7 +87,8 @@ APP_ADMIN_PASSWORD=
 TELEFONO_PELUQUERIA=
 
 JPA_SHOW_SQL=false
-# JWT_SECRET=  (pendiente: historia de inicio de sesión)
+JWT_SECRET=
+# JWT_EXPIRATION=86400
 ```
 
 Dónde obtener cada valor:
@@ -105,8 +106,9 @@ Dónde obtener cada valor:
 - **`TELEFONO_PELUQUERIA`**: teléfono corporativo que muestra la interfaz; lo proporciona el dueño
   del salón.
 - **`JPA_SHOW_SQL`**: `true` solo para depurar SQL; normalmente `false`.
-- **`JWT_SECRET`**: pendiente para la historia de inicio de sesión; se genera con
-  `openssl rand -base64 48`.
+- **`JWT_SECRET`**: obligatorio para iniciar sesión y firmar los tokens; se genera con
+  `openssl rand -base64 48`. No se sube a Git.
+- **`JWT_EXPIRATION`**: duración del token en segundos; por defecto `86400` (un día).
 
 `application.properties` solo contiene referencias `${...}`; nunca valores reales.
 
@@ -118,7 +120,9 @@ cd backend
 ```
 
 La API queda en `http://localhost:3000`. Al arrancar, Hibernate crea o actualiza las tablas a partir
-de las entidades `@Entity` (`spring.jpa.hibernate.ddl-auto=update`).
+de las entidades `@Entity` (`spring.jpa.hibernate.ddl-auto=update`). El login y las rutas protegidas
+requieren `JWT_SECRET`; el primer `ADMIN` se crea si están definidos `APP_ADMIN_EMAIL` y
+`APP_ADMIN_PASSWORD`.
 
 ### 4. Frontend
 
@@ -132,10 +136,12 @@ Crea `frontend/.env` con:
 
 ```dotenv
 VITE_API_URL=http://localhost:3000/api
+VITE_MONEDA=
 ```
 
 `VITE_API_URL` es la URL del backend terminada en `/api`; en producción usa el dominio público del
-backend. Reinicia Vite si cambias este archivo.
+backend. `VITE_MONEDA` es opcional: recibe el código ISO de la moneda (por ejemplo `VES` o `USD`) y
+se deja vacío mientras el equipo no defina la moneda del salón. Reinicia Vite si cambias este archivo.
 
 Abre la dirección que muestra Vite, normalmente `http://localhost:5173`.
 
@@ -151,13 +157,12 @@ Respuesta esperada:
 { "status": "ok" }
 ```
 
-La vista inicial del frontend también muestra este estado.
-
 ## Registro y gestión de personal
 
 | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|
 | `POST` | `/api/auth/registro` | Público | Crea una cuenta con rol `CLIENTE` y su ficha de cliente. |
+| `POST` | `/api/auth/login` | Público | Inicia sesión y devuelve el token JWT. |
 | `GET` | `/api/personal/buscar?email=...` | `ADMIN` | Devuelve los datos básicos de una cuenta `CLIENTE` por correo. |
 | `POST` | `/api/personal/promover` | `ADMIN` | Convierte la cuenta `CLIENTE` en `PERSONAL`, elimina su ficha de cliente y le asigna servicios. |
 | `GET` | `/api/personal/mi-perfil` | `PERSONAL` | Perfil del estilista autenticado, con sus servicios. |
@@ -173,12 +178,8 @@ Reglas de integridad aplicadas:
   estado `PENDIENTE` o `CONFIRMADA`. La fila `personal` se conserva para no romper las citas y
   asistencias históricas.
 
-El registro todavía no emite token: el inicio de sesión y el filtro JWT pertenecen a otra historia.
-Las rutas `ADMIN` y `PERSONAL` ya están protegidas con `@PreAuthorize`; mientras no exista el filtro
-JWT, se prueban con `@WithMockUser` en las pruebas de seguridad.
-
-Para probar el flujo por `curl` o Postman sin frontend, sigue
-[`docs/pruebas-manuales-estilistas.md`](docs/pruebas-manuales-estilistas.md). El backend incluye
+El registro público crea la cuenta `CLIENTE`; el inicio de sesión emite el token JWT que usan las
+rutas protegidas. Las rutas `ADMIN` y `PERSONAL` se validan con `@PreAuthorize`. El backend incluye
 HTTP Basic opcional con `APP_BASIC_AUTH=true`, apagado por defecto y solo para desarrollo local.
 
 ## Base de datos y esquema
@@ -203,8 +204,19 @@ npm run lint
 npm run build
 ```
 
-La prueba que levanta todo el contexto está deshabilitada hasta que el equipo configure una base de
-datos PostgreSQL de pruebas.
+La suite por defecto usa H2 y no toca Neon; en la última ejecución terminó con **88 pruebas,
+0 fallos y 3 omitidas**. Para ejecutar las pruebas funcionales contra la base real:
+
+```powershell
+cd backend
+$env:RUN_DB_TESTS="true"
+.\mvnw.cmd "-Dtest=PruebasCrearServicioNeon,PruebasFlujoEstilistaNeon" test
+Remove-Item Env:RUN_DB_TESTS
+```
+
+Requieren `DB_URL`, `DB_USER` y `DB_PASSWORD` en `backend/.env` y revierten sus cambios al terminar.
+La entidad mapea el campo `precio` de la API a la columna `costo`. Las imágenes se probaron en H2;
+no se ejecutaron pruebas de imágenes contra Neon.
 
 ## Gestión de tareas
 
@@ -220,6 +232,9 @@ las tareas y el estado actual del equipo.
 ## Seguridad
 
 - No subas archivos `.env`, credenciales de Neon ni secretos.
-- Las contraseñas se guardan con BCrypt.
-- Por defecto todas las rutas requieren autenticación, salvo `GET /api/health` y `POST /api/auth/registro`.
+- Las contraseñas se guardan con BCrypt y la sesión se autentica con JWT.
+- Son públicos `GET /api/health`, `POST /api/auth/login`, `POST /api/auth/registro`,
+  `GET /api/servicios`, `GET /api/servicios/{id}` y `GET /api/servicios/{id}/imagen`.
+- Crear un servicio (`POST /api/servicios`) requiere rol `ADMIN`; el resto de rutas requiere
+  autenticación.
 - Los errores de la API usan el formato `{ "error": "CODIGO", "message": "..." }`.
