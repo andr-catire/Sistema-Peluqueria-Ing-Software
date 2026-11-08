@@ -23,18 +23,15 @@ const nombreMarca = computed(() => config.nombre);
 const items = computed(() => {
   if (auth.rol === 'PERSONAL') {
     return [
-      {
-        name: 'personal-asistencia',
-        label: 'Mi asistencia',
-        icon: 'material-symbols-light:schedule',
-      },
+      { name: 'admin-agenda', label: 'Mi agenda', icon: 'material-symbols-light:calendar-month' },
+      { name: 'personal-asistencia', label: 'Mi asistencia', icon: 'material-symbols-light:schedule' },
     ];
   }
 
   return [
     { name: 'admin-servicios', label: 'Servicios', icon: 'material-symbols-light:content-cut' },
     { name: 'admin-personal', label: 'Personal', icon: 'material-symbols-light:group' },
-    { name: 'admin-asistencia', label: 'Asistencia', icon: 'material-symbols-light:schedule' },
+    { name: 'admin-agenda', label: 'Agenda semanal', icon: 'material-symbols-light:calendar-month' },
   ];
 });
 
