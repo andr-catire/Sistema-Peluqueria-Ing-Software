@@ -16,21 +16,30 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.ucab.peluqueria.seguridad.FiltroAutenticacionJwt;
+
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Seguridad REST sin sesión ni formulario: públicos /api/health, el registro y GET /api/servicios.
- * Las rutas por rol se protegen con @PreAuthorize; el filtro JWT llegará con la historia de login.
+ * Seguridad REST sin sesión: públicos /api/health, login, registro y GET /api/servicios.
+ * El filtro JWT valida el Bearer y las rutas por rol usan @PreAuthorize.
  */
 @Configuration
 @EnableWebSecurity
 public class ConfiguracionSeguridad {
+
+    private final FiltroAutenticacionJwt filtroJwt;
+
+    public ConfiguracionSeguridad(FiltroAutenticacionJwt filtroJwt) {
+        this.filtroJwt = filtroJwt;
+    }
 
     // 12 rondas de BCrypt: encarece los ataques de diccionario y no se nota al iniciar sesión.
     @Bean
@@ -50,7 +59,6 @@ public class ConfiguracionSeguridad {
 
         http
             .cors(Customizer.withDefaults())
-            // API sin cookies de sesión: la autenticación irá en el encabezado Authorization (JWT).
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .formLogin(AbstractHttpConfigurer::disable)
@@ -58,10 +66,11 @@ public class ConfiguracionSeguridad {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/health").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/auth/registro").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/registro").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/servicios").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/servicios", "/api/servicios/*/imagen").permitAll()
                 .anyRequest().authenticated())
+            .addFilterBefore(filtroJwt, UsernamePasswordAuthenticationFilter.class)
             .headers(headers -> headers
                 .httpStrictTransportSecurity(hsts -> hsts
                     .includeSubDomains(true)
@@ -71,11 +80,9 @@ public class ConfiguracionSeguridad {
                 .addHeaderWriter(new StaticHeadersWriter("Permissions-Policy",
                     "camera=(), microphone=(), geolocation=(), payment=()")))
             .exceptionHandling(handling -> handling
-                // Sin credenciales válidas.
                 .authenticationEntryPoint((request, response, exception) ->
                     responderJson(response, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHORIZED",
                         "Inicia sesión para continuar."))
-                // Autenticado, pero sin el rol requerido.
                 .accessDeniedHandler((request, response, exception) ->
                     responderJson(response, HttpServletResponse.SC_FORBIDDEN, "FORBIDDEN",
                         "No tienes permisos para realizar esta acción.")));

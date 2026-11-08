@@ -24,6 +24,9 @@ import com.ucab.peluqueria.configuracion.ConfiguracionSeguridad;
 import com.ucab.peluqueria.configuracion.ConfiguracionSeguridadMetodos;
 import com.ucab.peluqueria.excepcion.ManejadorGlobalExcepciones;
 import com.ucab.peluqueria.modelo.Rol;
+import com.ucab.peluqueria.repositorio.RepositorioUsuario;
+import com.ucab.peluqueria.seguridad.FiltroAutenticacionJwt;
+import com.ucab.peluqueria.seguridad.ServicioJwt;
 import com.ucab.peluqueria.seguridad.UsuarioActual;
 import com.ucab.peluqueria.servicio.EstilistaService;
 import com.ucab.peluqueria.transferencia.UsuarioBusquedaRespuesta;
@@ -37,11 +40,14 @@ import com.ucab.peluqueria.transferencia.UsuarioBusquedaRespuesta;
         ConfiguracionSeguridad.class,
         ConfiguracionSeguridadMetodos.class,
         ManejadorGlobalExcepciones.class,
+        FiltroAutenticacionJwt.class,
+        ServicioJwt.class,
         PruebasSeguridadBasic.UsuariosDePrueba.class
 })
 @TestPropertySource(properties = {
         "app.frontend-url=http://localhost:5173",
-        "app.basic-auth=true"
+        "app.basic-auth=true",
+        "app.jwt.secret=secreto_de_prueba_para_tests_unitarios_123456789"
 })
 class PruebasSeguridadBasic {
 
@@ -53,6 +59,9 @@ class PruebasSeguridadBasic {
 
     @MockitoBean
     private UsuarioActual usuarioActual;
+
+    @MockitoBean
+    private RepositorioUsuario repositorioUsuario;
 
     @Test
     void sinCredencialesResponde401() throws Exception {

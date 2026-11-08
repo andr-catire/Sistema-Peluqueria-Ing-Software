@@ -19,13 +19,25 @@ import com.ucab.peluqueria.configuracion.ConfiguracionSeguridad;
 import com.ucab.peluqueria.configuracion.ConfiguracionSeguridadMetodos;
 import com.ucab.peluqueria.excepcion.ManejadorGlobalExcepciones;
 import com.ucab.peluqueria.modelo.Rol;
+import com.ucab.peluqueria.repositorio.RepositorioUsuario;
+import com.ucab.peluqueria.seguridad.FiltroAutenticacionJwt;
+import com.ucab.peluqueria.seguridad.ServicioJwt;
 import com.ucab.peluqueria.servicio.AuthService;
 import com.ucab.peluqueria.transferencia.RegistroRespuesta;
 
 /** El registro público debe funcionar sin token y validar los datos de entrada. */
 @WebMvcTest(AuthController.class)
-@Import({ConfiguracionSeguridad.class, ConfiguracionSeguridadMetodos.class, ManejadorGlobalExcepciones.class})
-@TestPropertySource(properties = "app.frontend-url=http://localhost:5173")
+@Import({
+        ConfiguracionSeguridad.class,
+        ConfiguracionSeguridadMetodos.class,
+        ManejadorGlobalExcepciones.class,
+        FiltroAutenticacionJwt.class,
+        ServicioJwt.class
+})
+@TestPropertySource(properties = {
+        "app.frontend-url=http://localhost:5173",
+        "app.jwt.secret=secreto_de_prueba_para_tests_unitarios_123456789"
+})
 class PruebasSeguridadAuthController {
 
     private static final String CUERPO_VALIDO = """
@@ -43,6 +55,9 @@ class PruebasSeguridadAuthController {
 
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private RepositorioUsuario repositorioUsuario;
 
     @Test
     void elRegistroEsPublicoYResponde201() throws Exception {

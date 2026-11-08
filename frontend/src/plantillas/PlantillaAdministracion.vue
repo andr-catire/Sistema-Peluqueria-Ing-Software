@@ -28,6 +28,7 @@ const titulo = computed(() => route.meta.title || 'Panel');
 </template>
 
 <style scoped>
+/* PlantillaAdministracion — DESIGN §3.2 */
 .admin-layout {
   display: flex;
   min-height: 100vh;
